@@ -3,9 +3,12 @@ import { isElectron } from "react-device-detect";
 import localforage from "localforage";
 import BookModel from "../../models/Book";
 import toast from "react-hot-toast";
-import { getStorageLocation, showDownloadProgress } from "../common";
+import {
+  getMimeTypeWithFallback,
+  getStorageLocation,
+  showDownloadProgress,
+} from "../common";
 import SyncService from "../storage/syncService";
-import { CommonTool } from "../../assets/lib/kookit-extra-browser.min";
 import DatabaseService from "../storage/databaseService";
 import Book from "../../models/Book";
 import i18n from "../../i18n";
@@ -505,7 +508,7 @@ class BookUtil {
       let syncUtil = await SyncService.getSyncUtil();
       let bookBuffer: any = await this.fetchBook(key, format, true, "");
       let bookBlob = new Blob([bookBuffer], {
-        type: CommonTool.getMimeType(format.toLowerCase()),
+        type: getMimeTypeWithFallback(format),
       });
       let result = await syncUtil.uploadFile(
         key + "." + format.toLowerCase(),

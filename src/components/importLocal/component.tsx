@@ -19,6 +19,7 @@ import { Readability } from "@mozilla/readability";
 import {
   calculateFileMD5,
   clearComicTemp,
+  getMimeTypeWithFallback,
   getTextRules,
   supportedFormats,
   throttle,
@@ -30,10 +31,12 @@ import { analyzeBookTitle } from "../../utils/request/reader";
 
 // Convert supportedFormats to react-dropzone v14+ accept format
 // Key is MIME type, value is array of file extensions
+// 注意：必须用 getMimeTypeWithFallback，否则 docx / md / htm / mhtml 因缺少
+// MIME 映射会被丢弃，导致这些文件在选择器里被置灰、无法导入和拖入。
 const supportedFormatsAccept = supportedFormats.reduce<
   Record<string, string[]>
 >((obj, ext) => {
-  const mimeType = CommonTool.getMimeType(ext.replace(".", ""));
+  const mimeType = getMimeTypeWithFallback(ext);
   if (mimeType) {
     if (!obj[mimeType]) obj[mimeType] = [];
     obj[mimeType].push(ext);

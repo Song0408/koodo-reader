@@ -56,6 +56,19 @@ export const supportedFormats = [
   ".cbr",
   ".cb7",
 ];
+// CommonTool.getMimeType() 只认识一部分扩展名，docx / md / htm / mhtml 会返回 undefined。
+// 缺少 MIME 会导致这些扩展名被从文件选择器的 accept 列表里剔除，文件在选择器中被置灰无法导入。
+// 这里补齐缺失的映射。
+export const extraMimeTypes: { [key: string]: string } = {
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  md: "text/markdown",
+  htm: "text/html",
+  mhtml: "multipart/related",
+};
+export const getMimeTypeWithFallback = (extension: string): string => {
+  const name = extension.replace(".", "").toLowerCase();
+  return CommonTool.getMimeType(name) || extraMimeTypes[name] || "";
+};
 export interface HighlightValue {
   styleType: string;
   color: string;
