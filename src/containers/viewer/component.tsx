@@ -638,9 +638,17 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
         }
 
         if (this.state.isDisablePopup) {
-          if (doc!.getSelection()!.toString().trim().length === 0) {
-            let rect = doc!
-              .getSelection()!
+          // 原实现判断的是"选中内容为空"，却无条件调用 getRangeAt(0)。
+          // 空选区的 rangeCount 为 0，调用 getRangeAt(0) 会抛出
+          // IndexSizeError: 0 is not a valid index，导致划词时页面报错、弹窗无法出现。
+          // 这里补充 rangeCount 前置校验，仅在存在有效选区时读取位置。
+          const disabledPopupSelection = doc!.getSelection();
+          if (
+            disabledPopupSelection &&
+            disabledPopupSelection.rangeCount > 0 &&
+            disabledPopupSelection.toString().trim().length === 0
+          ) {
+            let rect = disabledPopupSelection
               .getRangeAt(0)
               .getBoundingClientRect();
             this.setState({ rect });
