@@ -66,6 +66,10 @@ class DeleteIcon extends React.Component<DeleteIconProps, DeleteIconStates> {
       }
 
       DatabaseService.deleteRecord(this.props.itemKey, "notes").then(() => {
+        // 笔记数据已变更，递增全局版本号，使阅读器内的章节缓存失效，
+        // 避免后续翻页时将已删除的高亮重新渲染出来
+        (window as any).__notesVersion =
+          ((window as any).__notesVersion || 0) + 1;
         deleteFunc();
         toast.success(this.props.t("Deletion successful"));
       });

@@ -80,8 +80,22 @@ export async function createHighlight(params: DigestParams): Promise<void> {
     []
   );
 
-  await DatabaseService.saveRecord(highlight, "notes");
+  // 乐观更新：先绘制高亮（即时视觉反馈），再持久化到数据库。
+  // 原顺序是"先落库后绘制"，而网页版落库需要全量读取并回写整张笔记表，
+  // 导致选中变色后需等待 1~2 秒才能看到高亮效果，读者会怀疑操作是否成功。
   await htmlBook.rendition.createOneNote(highlight, onNoteClick ?? (() => {}));
+
+  // 笔记数据即将变更，递增全局版本号，使翻页时的章节缓存失效
+  (window as any).__notesVersion = ((window as any).__notesVersion || 0) + 1;
+
+  try {
+    await DatabaseService.saveRecord(highlight, "notes");
+  } catch (error) {
+    console.error("Failed to persist highlight:", error);
+  }
+  // onSuccess 内含刷新侧栏笔记列表(handleFetchNotes)，需在落库完成后调用，
+  // 否则列表中读不到刚创建的高亮
+  onSuccess?.();
   let noteSyncManager = new NoteSyncManager(
     DatabaseService,
     ConfigService,
@@ -89,5 +103,4 @@ export async function createHighlight(params: DigestParams): Promise<void> {
     window.electronAPI?.path
   );
   noteSyncManager.syncNote(highlight, bookKey);
-  onSuccess?.();
 }

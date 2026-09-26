@@ -150,12 +150,35 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       );
     }
   }
+  // 章节级笔记缓存：网页版 getRecordsByBookKey 每次都会全量读取笔记表，
+  // 翻页时(rendered 事件)反复读库+逐条 JSON.parse 代价高昂且大部分是重复劳动。
+  // 同一本书且笔记数据未变更(window.__notesVersion 未变)时直接复用上次结果，
+  // 仅跳过读库，renderHighlighters 重画逻辑保持不变(iframe 每页都是重新渲染的)。
+  _noteCache: { bookKey: string; version: number; records: any[] } = {
+    bookKey: "",
+    version: -1,
+    records: [],
+  };
   handleHighlight = async (rendition: any) => {
     if (!rendition) return;
-    let highlighters: any = await DatabaseService.getRecordsByBookKey(
-      this.props.currentBook.key,
-      "notes"
-    );
+    const noteVersion = (window as any).__notesVersion || 0;
+    let highlighters: any;
+    if (
+      this._noteCache.bookKey === this.props.currentBook.key &&
+      this._noteCache.version === noteVersion
+    ) {
+      highlighters = this._noteCache.records;
+    } else {
+      highlighters = await DatabaseService.getRecordsByBookKey(
+        this.props.currentBook.key,
+        "notes"
+      );
+      this._noteCache = {
+        bookKey: this.props.currentBook.key,
+        version: noteVersion,
+        records: highlighters || [],
+      };
+    }
     if (!highlighters) return;
     let highlightersByChapter = highlighters.filter((item: Note) => {
       let cfi = JSON.parse(item.cfi);
@@ -543,13 +566,20 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
               )
             : 0;
       }
-      this.props.handleCurrentChapter(chapter);
-      this.props.handleCurrentChapterIndex(chapterDocIndex);
+      // 同一章内翻页时 chapter/chapterDocIndex 并未变化，
+      // 跳过 setState 与 redux dispatch，避免整页无意义的 React 重渲染
+      if (
+        this.state.chapter !== chapter ||
+        this.state.chapterDocIndex !== chapterDocIndex
+      ) {
+        this.props.handleCurrentChapter(chapter);
+        this.props.handleCurrentChapterIndex(chapterDocIndex);
 
-      this.setState({
-        chapter,
-        chapterDocIndex,
-      });
+        this.setState({
+          chapter,
+          chapterDocIndex,
+        });
+      }
       if (
         this.props.currentBook.format === "PDF" &&
         !ConfigService.getAllListConfig("convertPDFBooks").includes(
