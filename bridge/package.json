@@ -1,0 +1,15 @@
+{
+  "name": "koodo-legal-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Koodo Reader 法学论文攻防分析 - 本地桥接服务（LLM + 北大法宝 MCP）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "undici": "^6.19.8"
+  }
+}

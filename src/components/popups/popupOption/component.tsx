@@ -207,6 +207,15 @@ class PopupOption extends React.Component<PopupOptionProps> {
     this.props.handleOpenMenu(true);
   };
 
+  handleLegalAnalysis = () => {
+    const text = getSelection(this.props.currentBook.format);
+    if (!text) return;
+
+    this.props.handleQuoteText(text);
+    this.props.handleMenuMode("legal");
+    this.props.handleOpenMenu(true);
+  };
+
   handleOpenPopupOptionDialog = () => {
     this.props.handleOpenMenu(false);
     this.props.handlePopupOptionDialog(true);
@@ -243,6 +252,9 @@ class PopupOption extends React.Component<PopupOptionProps> {
         break;
       case "assistant":
         this.handleAssistant();
+        break;
+      case "legal-analysis":
+        this.handleLegalAnalysis();
         break;
       default:
         break;

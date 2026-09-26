@@ -39,3 +39,8 @@ kookit-extra.js
 kookit-extra.mjs
 kookit-extra-browser.js
 kookit-extra-browser.mjs
+
+# legal-analysis bridge
+bridge/config.json
+bridge/node_modules/
+bridge/.env

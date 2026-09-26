@@ -1,0 +1,21 @@
+{
+  "port": 3310,
+  "llm": {
+    "baseUrl": "https://api.deepseek.com/v1",
+    "apiKey": "",
+    "model": "deepseek-chat",
+    "temperature": 0.3,
+    "timeoutMs": 120000
+  },
+  "pkulaw": {
+    "token": "",
+    "proxy": "",
+    "useSemanticRecognition": false,
+    "caseResultSize": 3,
+    "requestTimeoutMs": 30000
+  },
+  "limits": {
+    "maxNorms": 6,
+    "maxInputChars": 6000
+  }
+}

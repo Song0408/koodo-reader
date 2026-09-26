@@ -6,6 +6,7 @@ import PopupDict from "../popupDict";
 import { PopupBoxProps, PopupBoxStates } from "./interface";
 import { getIframeDoc } from "../../../utils/reader/docUtil";
 import PopupAssist from "../popupAssist";
+import PopupLegal from "../popupLegal";
 import { isElectron } from "react-device-detect";
 import { ConfigService } from "../../../assets/lib/kookit-extra-browser.min";
 
@@ -16,10 +17,11 @@ const SETTING_PANEL_WIDTH = 299;
 const POPUP_SIZE_KEY = "popupBoxSize";
 const POPUP_POS_KEY = "popupBoxPosition";
 const DEFAULT_WIDTH = 500;
-const POPUP_MODES = ["note", "trans", "dict", "assistant"];
+const POPUP_MODES = ["note", "trans", "dict", "assistant", "legal"];
 
 function getDefaultHeight(menuMode: string) {
   if (menuMode === "assistant") return 400;
+  if (menuMode === "legal") return 480;
   if (menuMode === "note") return 360;
   return 320;
 }
@@ -401,6 +403,8 @@ class PopupBox extends React.Component<PopupBoxProps, PopupBoxStates> {
             <PopupDict {...(PopupProps as any)} />
           ) : menuMode === "assistant" ? (
             <PopupAssist {...(PopupProps as any)} />
+          ) : menuMode === "legal" ? (
+            <PopupLegal {...(PopupProps as any)} />
           ) : null}
           <span
             className="icon-close popup-close"
