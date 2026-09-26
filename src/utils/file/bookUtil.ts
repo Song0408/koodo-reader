@@ -359,11 +359,13 @@ class BookUtil {
         });
       }
     } else {
-      window.open(
-        `${window.location.href.split("#")[0]}#/${ref}/${book.key}?title=${
-          book.name
-        }&file=${book.key}`
-      );
+      // 网页模式下改为当前标签页内跳转。
+      // 原实现使用 window.open 在异步读取图书数据之后新开标签页，
+      // 会被 Safari/Chrome 等浏览器的弹窗拦截机制判定为非用户直接触发的弹窗而拦截，
+      // 导致"弹出窗口被拦截"、书籍无法打开。改为 location 跳转可彻底规避该问题。
+      window.location.href = `${window.location.href.split("#")[0]}#/${ref}/${
+        book.key
+      }?title=${book.name}&file=${book.key}`;
     }
   }
   static getBookUrl(book: BookModel) {
