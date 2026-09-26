@@ -44,6 +44,14 @@ import DatabaseService from "../../utils/storage/databaseService";
 import { getOcrResult, getOcrResultV2 } from "../../utils/request/reader";
 import { BookHelper } from "../../assets/lib/kookit.min";
 import { parseWithSystemOCR } from "../../utils/request/common";
+import {
+  PDF_TOC_CACHE_NAME,
+  PDF_TOC_PARSER_VERSION,
+  computePdfFingerprint,
+  generateTocFromChapterDocs,
+  isPageFallbackChapters,
+  flattenToc,
+} from "../../utils/reader/pdfTocService";
 import { isElectron } from "react-device-detect";
 declare var window: any;
 let lock = false; //prevent from clicking too fasts
@@ -51,6 +59,7 @@ let lock = false; //prevent from clicking too fasts
 class Viewer extends React.Component<ViewerProps, ViewerState> {
   private resizeHandler: (() => void) | null = null;
   private _pendingRerender = false;
+  private pdfFingerprint: string | null = null;
   lock: boolean;
   constructor(props: ViewerProps) {
     super(props);
@@ -253,6 +262,58 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     this.props.handleMenuMode("note");
     this.props.handleOpenMenu(true);
   };
+  /**
+   * 法学 PDF 动态目录 fallback：
+   * 1. 命中缓存（指纹一致）直接使用；2. 否则后台解析全文文本层；
+   * 3. 解析成功后重新 dispatch chapters 树，ContentList 自动刷新。
+   * 全程异步，不阻塞首次渲染。
+   */
+  handlePdfTocFallback = async (rendition: any, chapterDocs: any[]) => {
+    const key = this.props.currentBook.key;
+    try {
+      const cached = ConfigService.getObjectConfig(
+        key,
+        PDF_TOC_CACHE_NAME,
+        null
+      ) as { fingerprint: string; version: number; chapters: any[] } | null;
+      let toc: any[] | null = null;
+      if (
+        cached &&
+        cached.fingerprint &&
+        cached.fingerprint === this.pdfFingerprint &&
+        cached.version === PDF_TOC_PARSER_VERSION &&
+        Array.isArray(cached.chapters) &&
+        cached.chapters.length > 1
+      ) {
+        toc = cached.chapters;
+      } else {
+        toc = await generateTocFromChapterDocs(chapterDocs);
+        if (toc && toc.length > 1) {
+          ConfigService.setObjectConfig(
+            key,
+            {
+              fingerprint: this.pdfFingerprint,
+              version: PDF_TOC_PARSER_VERSION,
+              chapters: toc,
+            },
+            PDF_TOC_CACHE_NAME
+          );
+        }
+      }
+      if (!toc || toc.length < 2) return;
+      // 书籍已切换则丢弃结果
+      if (this.state.rendition !== rendition) return;
+      const flattenChapters = flattenToc(toc);
+      this.props.handleHtmlBook({
+        key,
+        chapters: toc,
+        flattenChapters,
+        rendition,
+      });
+    } catch (error) {
+      console.warn("PDF TOC fallback failed:", error);
+    }
+  };
   handleRenderBook = async () => {
     if (lock) return;
     let { key, path, format, name } = this.props.currentBook;
@@ -305,6 +366,9 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       this.props.currentBook.description.indexOf("scanned") > -1
         ? "scannedOcrLang"
         : "textOcrLang";
+    // 必须在 getRendition 之前计算：pdf.js 会 transfer ArrayBuffer 导致其 detach
+    this.pdfFingerprint =
+      this.props.currentBook.format === "PDF" ? computePdfFingerprint(result) : null;
     let rendition = BookHelper.getRendition(
       result,
       {
@@ -479,6 +543,13 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       rendition: rendition,
     });
     this.setState({ rendition });
+    // 法学 PDF 动态目录 fallback：仅在 PDF 且目录为「页码兜底」时启用
+    if (
+      this.props.currentBook.format === "PDF" &&
+      isPageFallbackChapters(chapters)
+    ) {
+      this.handlePdfTocFallback(rendition, chapterDocs);
+    }
     if (
       this.props.currentBook.format === "PDF" &&
       !ConfigService.getAllListConfig("convertPDFBooks").includes(

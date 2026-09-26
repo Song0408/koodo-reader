@@ -219,6 +219,27 @@ class ContentList extends React.Component<ContentListProps, ContentListState> {
       {}
     );
     this.props.handleJumpPosition(prevPosition);
+    // 动态生成的法学 PDF 目录：goToPage + 垂直位置补偿
+    if (item.pdfToc && this.props.htmlBook && this.props.htmlBook.rendition) {
+      const rendition = this.props.htmlBook.rendition;
+      try {
+        await rendition.goToPage(item.pdfPage);
+        if (rendition.readerMode === "scroll" && rendition.element) {
+          const element = rendition.element as HTMLElement;
+          // goToPage 已定位到页顶，叠加页内垂直偏移（比例 × 视口高）
+          element.scrollTo(
+            0,
+            element.scrollTop + Math.round(item.pdfYRatio * element.clientHeight)
+          );
+        }
+      } catch (error) {
+        console.warn("PDF TOC jump failed:", error);
+      }
+      this.props.handleCurrentChapter(item.label);
+      this.props.handleCurrentChapterIndex(item.index);
+      scrollContents(item.label, item.href);
+      return;
+    }
     await this.props.htmlBook.rendition.goToChapter(
       item.index,
       item.href,
@@ -311,12 +332,15 @@ class ContentList extends React.Component<ContentListProps, ContentListState> {
               }}
               className="book-content-name content-chapter-title"
               data-href={item.href}
+              title={item.pdfToc ? "自动生成" : undefined}
             >
               <span>{item.label}</span>
               <span
                 style={{ marginRight: "20px", opacity: 0.6, fontSize: "12px" }}
               >
-                {this.state.chapterPages[item.index]
+                {item.pdfToc
+                  ? item.pdfPage
+                  : this.state.chapterPages[item.index]
                   ? this.state.chapterPages[item.index]
                   : ""}
               </span>
